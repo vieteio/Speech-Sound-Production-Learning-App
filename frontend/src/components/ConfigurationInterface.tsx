@@ -13,22 +13,46 @@ export const ConfigurationInterface: React.FC<ConfigurationInterfaceProps> = ({ 
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    e.stopPropagation();
+    
+    // Check if we're leaving the drop zone (not just entering a child element)
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (
+      x <= rect.left ||
+      x >= rect.right ||
+      y <= rect.top ||
+      y >= rect.bottom
+    ) {
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
     
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('audio/')) {
-      await handleFileUpload(file);
+    if (!file) {
+      return;
     }
+
+    await handleFileUpload(file);
   };
 
   const handleFileUpload = async (file: File) => {
@@ -39,12 +63,15 @@ export const ConfigurationInterface: React.FC<ConfigurationInterfaceProps> = ({ 
     };
 
     try {
+      if (!file.type.startsWith('audio/')) {
+        return await uploadReference(file, metadata);
+      }
+
       const reference = await uploadReference(file, metadata);
       console.log('Reference configured:', reference);
       onConfigured(true);
     } catch (error) {
       console.error('Configuration failed:', error);
-      onConfigured(false);
     }
   };
 
@@ -56,14 +83,28 @@ export const ConfigurationInterface: React.FC<ConfigurationInterfaceProps> = ({ 
           sx={{ 
             p: 4, 
             backgroundColor: 'background.paper',
-            border: '1px solid',
-            borderColor: isDragging ? 'primary.main' : 'primary.light',
+            border: '2px dashed',
+            borderColor: isDragging ? 'primary.main' : state.error ? 'error.main' : 'primary.light',
             borderRadius: '12px',
             transition: 'all 0.2s ease-in-out',
             transform: isDragging ? 'scale(1.01)' : 'scale(1)',
+            cursor: 'pointer',
+            position: 'relative',
+            '&::after': isDragging ? {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'primary.light',
+              opacity: 0.3,
+              borderRadius: '12px',
+              pointerEvents: 'none',
+            } : {},
           }}
           onDragEnter={handleDragEnter}
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
@@ -165,21 +206,49 @@ export const ConfigurationInterface: React.FC<ConfigurationInterfaceProps> = ({ 
             
             {state.error && (
               <Fade in timeout={200}>
-                <Typography 
-                  color="error" 
+                <Box 
                   sx={{ 
                     mt: 2,
                     p: 2,
                     backgroundColor: 'error.light',
                     borderRadius: 2,
                     width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1,
                   }}
                 >
-                  {state.error}
-                </Typography>
+                  <Typography color="error.main" fontWeight="medium">
+                    Configuration Failed
+                  </Typography>
+                  <Typography color="error.main">
+                    {state.error}
+                  </Typography>
+                  <Typography variant="body2" color="error.main" sx={{ opacity: 0.8 }}>
+                    Please try uploading a different audio file.
+                  </Typography>
+                </Box>
               </Fade>
             )}
           </Box>
+          
+          {isDragging && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                textAlign: 'center',
+                zIndex: 1,
+                pointerEvents: 'none',
+              }}
+            >
+              <Typography variant="h6" color="primary.main">
+                Drop audio file here
+              </Typography>
+            </Box>
+          )}
         </Paper>
       </Box>
     </Fade>

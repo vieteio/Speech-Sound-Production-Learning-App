@@ -44,9 +44,9 @@ export const SoundLearningApp: React.FC = () => {
           onConfigured={(success) => {
             if (success) {
               localStorage.removeItem('configuration_status');
+              setShowConfig(false);
               window.location.reload();
             }
-            setShowConfig(false);
           }} 
         />
       </Box>

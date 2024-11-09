@@ -16,6 +16,7 @@ class ConfigurationStore:
 
     def _load_references(self):
         """Load all reference configurations from storage directory."""
+        self._references.clear()  # Clear existing references
         for file in self.storage_dir.glob("*.json"):
             try:
                 if file.stat().st_size > 0:
@@ -25,6 +26,10 @@ class ConfigurationStore:
                         self._references[reference.id] = reference
             except Exception as e:
                 print(f"Failed to load reference from {file}: {str(e)}")
+
+    def reload(self):
+        """Reload all references from disk."""
+        self._load_references()
 
     def save_reference(self, reference: PhonemeReference):
         """Save a reference configuration to storage."""
@@ -40,6 +45,9 @@ class ConfigurationStore:
             # Rename temporary file to final name
             temp_path.replace(file_path)
             
+            # Reload references to ensure consistency
+            self.reload()
+            
         except Exception as e:
             raise Exception(f"Failed to save reference: {str(e)}")
 
@@ -49,4 +57,6 @@ class ConfigurationStore:
 
     def list_references(self) -> list[PhonemeReference]:
         """List all reference configurations."""
-        return list(self._references.values()) 
+        # Reload to ensure we have latest data
+        self.reload()
+        return list(self._references.values())
